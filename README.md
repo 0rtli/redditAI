@@ -1,6 +1,6 @@
 # redditAI
 
-Small Python CLI and local web app that researches Reddit posts and top comments for any topic. For broad business prompts, it can also switch into monetizable browser extension or lightweight SaaS opportunity analysis.
+Small Python CLI and local web app that researches Reddit posts and top comments for any topic. In normal mode it acts like a Reddit TL;DR tool for your keywords, and for broad business prompts it can still switch into monetizable browser extension or lightweight SaaS opportunity analysis.
 
 It includes a local browser UI where you can paste your OpenAI key, ask a question, choose an output language, and get a clean Reddit-backed report.
 
@@ -28,7 +28,9 @@ Notes:
 
 - Accepts a topic or niche you want researched.
 - Searches Reddit globally or inside one subreddit.
+- Can bias results toward the highest-upvoted matching posts.
 - Pulls top posts plus top comments for extra context.
+- Produces a short TL;DR summary for normal research queries.
 - Extracts pains, complaints, workarounds, and demand signals.
 - Supports Discovery Mode for broad prompts like finding monetizable browser extension ideas.
 - Scores each opportunity for pain severity, repeat usage, willingness to pay, ROI, extension fit, and competition risk.

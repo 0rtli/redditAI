@@ -526,6 +526,15 @@ def build_ssl_context() -> ssl.SSLContext:
     return ssl.create_default_context()
 
 
+def normalize_output_language(value: str | None) -> str:
+    lowered = clean_text(value or "").lower()
+    if lowered in {"russian", "russkiy", "русский", "ru", "russian language"}:
+        return "Russian"
+    if lowered in {"georgian", "ქართული", "ka", "kartuli", "georgian language"}:
+        return "Georgian"
+    return "English"
+
+
 def search_reddit(
     topic: str,
     *,
@@ -534,18 +543,20 @@ def search_reddit(
     sort: str,
     time_filter: str,
     comments_per_post: int,
+    top_upvoted_only: bool = False,
 ) -> list[RedditPost]:
     query = quote_plus(topic)
     fetch_limit = min(max(limit * 5, limit), 25)
+    effective_sort = "top" if top_upvoted_only else sort
     if subreddit:
         url = (
             f"{REDDIT_BASE_URL}/r/{subreddit}/search.json?q={query}"
-            f"&restrict_sr=1&sort={sort}&t={time_filter}&limit={fetch_limit}&raw_json=1"
+            f"&restrict_sr=1&sort={effective_sort}&t={time_filter}&limit={fetch_limit}&raw_json=1"
         )
     else:
         url = (
             f"{REDDIT_BASE_URL}/search.json?q={query}"
-            f"&sort={sort}&t={time_filter}&limit={fetch_limit}&raw_json=1"
+            f"&sort={effective_sort}&t={time_filter}&limit={fetch_limit}&raw_json=1"
         )
 
     payload = fetch_json(url)
@@ -568,6 +579,10 @@ def search_reddit(
             matched_queries=[topic],
             )
         )
+
+    if top_upvoted_only:
+        candidates.sort(key=lambda post: (post.score, post.num_comments), reverse=True)
+        candidates = candidates[: max(limit * 3, limit)]
 
     posts = rank_posts_for_topic(topic, candidates, limit)
     for post in posts:
@@ -821,6 +836,7 @@ def collect_research_posts(
     time_filter: str,
     comments_per_post: int,
     discovery_mode: bool | None = None,
+    top_upvoted_only: bool = False,
 ) -> tuple[list[RedditPost], dict[str, Any]]:
     use_discovery = bool(discovery_mode) or should_use_discovery_mode(topic)
     opportunity_mode = should_use_opportunity_analysis(topic)
@@ -838,6 +854,7 @@ def collect_research_posts(
             sort=sort,
             time_filter=time_filter,
             comments_per_post=comments_per_post,
+            top_upvoted_only=top_upvoted_only,
         )
         for post in query_posts:
             key = post.permalink or post.url
@@ -869,6 +886,7 @@ def collect_research_posts(
                 sort=sort,
                 time_filter=time_filter,
                 comments_per_post=comments_per_post,
+                top_upvoted_only=top_upvoted_only,
             )
             for post in query_posts:
                 key = post.permalink or post.url
@@ -890,6 +908,7 @@ def collect_research_posts(
     return capped_posts, {
         "discovery_mode": use_discovery,
         "analysis_mode": "opportunity" if opportunity_mode else "general",
+        "top_upvoted_only": top_upvoted_only,
         "queries": discovery_queries,
         "attempted_queries": attempted_queries,
         "data_summary": data_summary,
@@ -1029,6 +1048,8 @@ def build_data_summary(topic: str, posts: list[RedditPost], attempted_queries: l
         "posts_analyzed": len(posts),
         "comments_analyzed": sum(len(post.comments) for post in posts),
         "quotes_collected": len(quotes),
+        "average_score": round(sum(post.score for post in posts) / len(posts), 1) if posts else 0,
+        "top_score": max((post.score for post in posts), default=0),
         "queries_attempted": attempted_queries,
         "sample_quotes": quotes[:5],
     }
@@ -1166,14 +1187,17 @@ def build_general_analysis_prompt(
     view = build_general_research_view(topic, posts, research_context)
     data_summary = view["data_summary"]
     lines = [
-        "Goal: answer the user's Reddit research question using the supplied evidence.",
+        "Goal: produce a short TL;DR summary of Reddit posts that match the user's keywords.",
         f"Topic: {topic}",
         f"Discovery mode: {'ON' if research_context.get('discovery_mode') else 'OFF'}",
+        f"Top-upvoted filter: {'ON' if research_context.get('top_upvoted_only') else 'OFF'}",
         "",
         "Data collection summary:",
         f"- Posts analyzed: {data_summary.get('posts_analyzed', len(posts))}",
         f"- Comments analyzed: {data_summary.get('comments_analyzed', sum(len(post.comments) for post in posts))}",
         f"- Quotes collected: {data_summary.get('quotes_collected', 0)}",
+        f"- Average upvotes: {data_summary.get('average_score', 0)}",
+        f"- Top upvotes seen: {data_summary.get('top_score', 0)}",
         "- Queries attempted:",
     ]
     for query in data_summary.get(
@@ -1330,25 +1354,30 @@ def summarize_with_openai(
     }
     analysis_mode = determine_analysis_mode(topic, research_context)
     analysis = analyze_market_opportunities(topic, posts, research_context) if analysis_mode == "opportunity" else None
-    target_language = clean_text(output_language) or "English"
+    target_language = normalize_output_language(output_language)
     if analysis_mode == "general":
         instructions = (
+            f"CRITICAL REQUIREMENT: Write the entire final report in {target_language}. "
+            f"All section headers, bullets, explanations, and summaries must be in {target_language}. "
+            "Do not default back to English except for product names, subreddit names, URLs, and technical identifiers.\n\n"
             "You are a sharp Reddit research analyst. Your job is to answer the user's question using only the supplied Reddit evidence. "
             "Do not turn this into a startup, monetization, or browser-extension opportunity report unless the user explicitly asked for that. "
             "The data collection phase has already been completed for you. Never say the evidence is missing unless the data summary explicitly shows that all collection attempts failed. "
-            f"Write the final report in {target_language}. Keep product names, subreddit names, URLs, and technical terms unchanged when needed. "
-            "Be direct, readable, and specific about what Reddit users are actually saying.\n\n"
+            "Keep product names, subreddit names, URLs, and technical terms unchanged when needed. "
+            "Be direct, readable, and specific about what Reddit users are actually saying. Default to a concise TL;DR style instead of a long report.\n\n"
             "Return markdown with these sections exactly:\n"
             "1. Data Summary\n"
             "2. TL;DR\n"
-            "3. Main Findings\n"
-            "4. Repeated Themes\n"
-            "5. Disagreements / Caveats\n"
-            "6. Useful Quotes\n"
-            "7. Source Notes\n"
+            "3. Key Points\n"
+            "4. Top Posts\n"
+            "5. Useful Quotes\n"
+            "6. Source Notes\n"
         )
     else:
         instructions = (
+        f"CRITICAL REQUIREMENT: Write the entire final report in {target_language}. "
+        f"All section headers, bullets, explanations, and summaries must be in {target_language}. "
+        "Do not default back to English except for product names, subreddit names, URLs, and technical identifiers.\n\n"
         "You are a senior product research engineer, growth analyst, and monetization strategist. "
         "Your job is not to summarize sentiment. Your job is to rank monetizable product opportunities, "
         "especially browser extensions and lightweight SaaS ideas. Use only the supplied Reddit evidence and "
@@ -1385,7 +1414,7 @@ def summarize_with_openai(
         "Best Business Model:\nWhy people would pay:\nWhy a browser extension is a good or bad fit:\nRecommended Format:\n"
         "Suggested Product Idea:\nSuggested MVP:\nConfidence:\n\n"
         "For Discovery Queries Used, list the exact sub-queries you used. For Top Opportunities, rank only the strongest opportunities after discarding weak ones."
-        f"Keep the tone founder-friendly, direct, and practical. Prefer concrete judgments over vague advice. Write the final report in {target_language}. "
+        "Keep the tone founder-friendly, direct, and practical. Prefer concrete judgments over vague advice. "
         "Keep product names, subreddit names, URLs, and technical terms unchanged when needed."
         )
     payload = {
@@ -1611,6 +1640,8 @@ def fallback_general_summary(
             f"- Posts analyzed: {data_summary['posts_analyzed']}",
             f"- Comments analyzed: {data_summary['comments_analyzed']}",
             f"- Quotes collected: {data_summary['quotes_collected']}",
+            f"- Average upvotes: {data_summary.get('average_score', 0)}",
+            f"- Top upvotes seen: {data_summary.get('top_score', 0)}",
             "- Queries attempted:",
         ]
         for query in data_summary["queries_attempted"]:
@@ -1622,21 +1653,13 @@ def fallback_general_summary(
                 "",
                 f"I searched Reddit for `{topic}` and broadened the search terms, but the collected evidence is still too thin for a trustworthy summary.",
                 "",
-                "# Main Findings",
+                "# Key Points",
                 "",
                 "- No strong findings yet because the sample is too small.",
                 "",
-                "# Repeated Themes",
+                "# Top Posts",
                 "",
-                "- No stable repeated theme was detected.",
-                "",
-                "# Disagreements / Caveats",
-                "",
-                "- All collection attempts were exhausted before analysis.",
-                "",
-                "# Useful Quotes",
-                "",
-                "- No representative quotes were collected.",
+                "- No strong Reddit posts were collected.",
                 "",
                 "# Source Notes",
                 "",
@@ -1651,6 +1674,8 @@ def fallback_general_summary(
         f"- Posts analyzed: {data_summary['posts_analyzed']}",
         f"- Comments analyzed: {data_summary['comments_analyzed']}",
         f"- Quotes collected: {data_summary['quotes_collected']}",
+        f"- Average upvotes: {data_summary.get('average_score', 0)}",
+        f"- Top upvotes seen: {data_summary.get('top_score', 0)}",
         "- Queries attempted:",
     ]
     for query in data_summary["queries_attempted"]:
@@ -1660,20 +1685,18 @@ def fallback_general_summary(
         for quote in data_summary["sample_quotes"]:
             lines.append(f'- "{quote}"')
 
-    lines.extend(["", "# TL;DR", "", view["tldr"], "", "# Main Findings", ""])
+    lines.extend(["", "# TL;DR", "", view["tldr"], "", "# Key Points", ""])
     for finding in view["main_findings"]:
         lines.append(f"- {finding}")
 
-    lines.extend(["", "# Repeated Themes", ""])
-    for theme in view["repeated_themes"]:
-        lines.append(f"- {theme}")
-
-    lines.extend(["", "# Disagreements / Caveats", ""])
-    for caveat in view["caveats"]:
-        lines.append(f"- {caveat}")
+    lines.extend(["", "# Top Posts", ""])
+    for post in view["top_posts"][:4]:
+        lines.append(
+            f"- r/{post.subreddit}: {post.title} (score {post.score}, {post.num_comments} comments)"
+        )
 
     lines.extend(["", "# Useful Quotes", ""])
-    for quote in view["quotes"][:6]:
+    for quote in view["quotes"][:5]:
         lines.append(f'- "{quote}"')
 
     lines.extend(["", "# Source Notes", ""])
@@ -2691,12 +2714,12 @@ def build_general_tldr(
     if top_subreddits:
         communities = ", ".join(f"r/{name}" for name, _ in top_subreddits[:3])
         return (
-            f"Reddit discussion around `{topic}` mainly centers on {theme_text}. "
-            f"The strongest sample came from {communities}, and the conversation leans toward firsthand experiences, tradeoffs, and recurring complaints rather than one clean consensus."
+            f"Top Reddit posts about `{topic}` mostly focus on {theme_text}. "
+            f"The strongest signal came from {communities}, and the overall conversation is better read as a quick pattern summary than a single clear consensus."
         )
     return (
-        f"Reddit discussion around `{topic}` mainly centers on {theme_text}. "
-        "The sample is useful for pattern-finding, but opinions are still mixed and community-specific."
+        f"Top Reddit posts about `{topic}` mostly focus on {theme_text}. "
+        "The sample is useful for a quick TL;DR, but opinions are still mixed and community-specific."
     )
 
 
@@ -2705,7 +2728,7 @@ def build_general_findings(posts: list[RedditPost], keywords: list[str]) -> list
     ranked_posts = sorted(posts, key=lambda post: (post.score, post.num_comments), reverse=True)
     for post in ranked_posts[:3]:
         findings.append(
-            f"r/{post.subreddit}: {post.title} (score {post.score}, {post.num_comments} comments)"
+            f"High-upvote post in r/{post.subreddit}: {post.title} (score {post.score})"
         )
     if keywords:
         findings.append(f"Repeated discussion terms include: {', '.join(keywords[:6])}.")
@@ -2771,6 +2794,8 @@ def build_general_source_notes(
             + "."
         )
     notes.append(f"Sample size: {len(posts)} Reddit posts plus top comments.")
+    if research_context.get("top_upvoted_only"):
+        notes.append("Results were biased toward the highest-upvoted posts, so this summary favors mainstream or highly visible takes.")
     notes.append("Reddit discussions are directional evidence, not a statistically clean sample of all users.")
     return notes
 

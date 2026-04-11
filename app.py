@@ -68,6 +68,7 @@ class ResearchHandler(BaseHTTPRequestHandler):
                 {"relevance", "hot", "top", "new", "comments"},
                 "relevance",
             )
+            top_upvoted_only = bool(payload.get("topUpvotedOnly", True))
             use_ai = bool(payload.get("useAi", True))
             discovery_mode = bool(payload.get("discoveryMode", False))
 
@@ -79,6 +80,7 @@ class ResearchHandler(BaseHTTPRequestHandler):
                 time_filter=time_filter,
                 comments_per_post=comments_per_post,
                 discovery_mode=discovery_mode,
+                top_upvoted_only=top_upvoted_only,
             )
             research_packet = build_research_packet(topic, posts, research_context)
 

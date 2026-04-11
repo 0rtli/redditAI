@@ -16,8 +16,8 @@
         <p class="eyebrow">REDDITAI</p>
         <h1>Ask anything. Get a Reddit-backed answer.</h1>
         <p class="hero-copy">
-          Paste your OpenAI key, enter any question or topic, and this app will search Reddit,
-          pull relevant posts and comments, then turn the findings into a clean report. If your prompt is business-focused, it will automatically switch into opportunity analysis mode.
+          Paste your OpenAI key, enter keywords or a question, and redditAI will search Reddit,
+          pull the most relevant posts and comments, then give you a short TL;DR summary. If your prompt is business-focused, it can still switch into opportunity analysis mode.
         </p>
       </section>
 
@@ -58,10 +58,6 @@
                 <option value="English" selected>English</option>
                 <option value="Russian">Русский</option>
                 <option value="Georgian">ქართული</option>
-                <option value="German">Deutsch</option>
-                <option value="Spanish">Español</option>
-                <option value="French">Français</option>
-                <option value="Turkish">Türkçe</option>
               </select>
               <small>OpenAI can write the final report in this language.</small>
             </label>
@@ -85,6 +81,13 @@
             <label class="toggle-field">
               <input id="discovery-mode" name="discoveryMode" type="checkbox">
               <span>Broad Reddit search mode</span>
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <label class="toggle-field">
+              <input id="top-upvoted-only" name="topUpvotedOnly" type="checkbox" checked>
+              <span>Use highest-upvoted posts only</span>
             </label>
           </div>
 
@@ -130,7 +133,7 @@
 
         <section class="panel output-panel">
           <div class="panel-header">
-            <h2>Research Report</h2>
+            <h2>TL;DR Summary</h2>
             <div class="output-actions">
               <span class="meta-text" id="sample-size">No research yet</span>
               <button class="secondary-button compact" id="copy-report" type="button">Copy report</button>

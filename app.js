@@ -34,6 +34,7 @@ form.addEventListener("submit", async (event) => {
     commentsPerPost: Number(form.commentsPerPost.value),
     time: form.time.value,
     sort: form.sort.value,
+    topUpvotedOnly: form.topUpvotedOnly.checked,
     useAi: form.useAi.checked,
     discoveryMode: form.discoveryMode.checked,
   };
@@ -73,6 +74,8 @@ form.addEventListener("submit", async (event) => {
       showNotice("Chosen report language needs OpenAI analysis. Local fallback report stayed in English.");
     } else if (result.discoveryMode) {
       showNotice(`Broad search mode used ${result.discoveryQueries.length} sub-queries and merged the most relevant Reddit findings.`);
+    } else if (payload.topUpvotedOnly) {
+      showNotice("Summary was built from the highest-upvoted matching Reddit posts.");
     } else if (result.analysisMode === "opportunity") {
       showNotice("Business-focused prompt detected, so the report was ranked with the investor scoring model.");
     } else {
@@ -135,7 +138,7 @@ function setLoading(isLoading) {
 function clearResults() {
   hideNotice();
   summary.classList.remove("empty-state");
-  summary.innerHTML = "<p>Searching Reddit, reviewing posts and comments, and assembling the report...</p>";
+  summary.innerHTML = "<p>Searching Reddit, pulling the strongest posts, and writing a short TL;DR...</p>";
   sampleSize.textContent = "Research in progress";
   sourceCount.textContent = "0 posts";
   sources.innerHTML = "";
@@ -229,8 +232,8 @@ function updateProgress() {
     : [
         "Searching Reddit...",
         "Reviewing posts and comments...",
-        "Extracting repeated themes...",
-        likelyOpportunityMode ? "Ranking the strongest business signals..." : "Organizing the strongest evidence...",
+        payloadUsesTopPosts() ? "Selecting the highest-upvoted matches..." : "Extracting repeated themes...",
+        likelyOpportunityMode ? "Ranking the strongest business signals..." : "Writing a short TL;DR summary...",
         "Writing the final report...",
       ];
 
@@ -263,6 +266,10 @@ function isOpportunityPrompt(topic) {
     "mrr",
   ];
   return markers.some((marker) => lowered.includes(marker));
+}
+
+function payloadUsesTopPosts() {
+  return form.topUpvotedOnly && form.topUpvotedOnly.checked;
 }
 
 function renderMarkdownLite(markdownText) {
