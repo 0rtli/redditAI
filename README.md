@@ -31,6 +31,7 @@ Notes:
 - Can bias results toward the highest-upvoted matching posts.
 - Pulls top posts plus top comments for extra context.
 - Produces a short TL;DR summary for normal research queries.
+- Lets you choose the report type explicitly: `TL;DR summary` or `Business opportunity analysis`.
 - Extracts pains, complaints, workarounds, and demand signals.
 - Supports Discovery Mode for broad prompts like finding monetizable browser extension ideas.
 - Scores each opportunity for pain severity, repeat usage, willingness to pay, ROI, extension fit, and competition risk.

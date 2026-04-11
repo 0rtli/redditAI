@@ -640,6 +640,8 @@ def determine_analysis_mode(
     topic: str,
     research_context: dict[str, Any] | None = None,
 ) -> str:
+    if research_context and research_context.get("analysis_mode") in {"general", "opportunity"}:
+        return str(research_context["analysis_mode"])
     lowered = topic.lower()
     if any(marker in lowered for marker in OPPORTUNITY_INTENT_MARKERS):
         return "opportunity"
@@ -837,9 +839,11 @@ def collect_research_posts(
     comments_per_post: int,
     discovery_mode: bool | None = None,
     top_upvoted_only: bool = False,
+    analysis_mode: str | None = None,
 ) -> tuple[list[RedditPost], dict[str, Any]]:
     use_discovery = bool(discovery_mode) or should_use_discovery_mode(topic)
-    opportunity_mode = should_use_opportunity_analysis(topic)
+    selected_mode = analysis_mode if analysis_mode in {"general", "opportunity"} else None
+    opportunity_mode = selected_mode == "opportunity" if selected_mode else should_use_opportunity_analysis(topic)
     discovery_queries = build_collection_queries(topic, use_discovery, opportunity_mode)
     per_query_limit = max(2, min(4, max(2, limit // 2 if limit > 2 else 2)))
     deduped: dict[str, RedditPost] = {}
@@ -907,7 +911,7 @@ def collect_research_posts(
     data_summary = build_data_summary(topic, capped_posts, attempted_queries, quote_snippets)
     return capped_posts, {
         "discovery_mode": use_discovery,
-        "analysis_mode": "opportunity" if opportunity_mode else "general",
+        "analysis_mode": selected_mode or ("opportunity" if opportunity_mode else "general"),
         "top_upvoted_only": top_upvoted_only,
         "queries": discovery_queries,
         "attempted_queries": attempted_queries,

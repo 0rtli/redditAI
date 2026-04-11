@@ -53,6 +53,11 @@ class ResearchHandler(BaseHTTPRequestHandler):
             api_key = str(payload.get("apiKey", "")).strip() or None
             model = str(payload.get("model", "gpt-5.4-mini")).strip() or "gpt-5.4-mini"
             output_language = str(payload.get("outputLanguage", "English")).strip() or "English"
+            report_type = _enum_value(
+                payload.get("reportType"),
+                {"general", "opportunity"},
+                "general",
+            )
             subreddit = str(payload.get("subreddit", "")).strip() or None
             limit = _bounded_int(payload.get("limit"), default=6, low=1, high=12)
             comments_per_post = _bounded_int(
@@ -81,6 +86,7 @@ class ResearchHandler(BaseHTTPRequestHandler):
                 comments_per_post=comments_per_post,
                 discovery_mode=discovery_mode,
                 top_upvoted_only=top_upvoted_only,
+                analysis_mode=report_type,
             )
             research_packet = build_research_packet(topic, posts, research_context)
 

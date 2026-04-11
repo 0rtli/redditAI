@@ -49,9 +49,20 @@
 
           <div class="field-grid triple compact-grid">
             <label class="field">
+              <span>Report type</span>
+              <select id="report-type" name="reportType">
+                <option value="general" selected>TL;DR summary</option>
+                <option value="opportunity">Business opportunity analysis</option>
+              </select>
+              <small>Use summary for normal Reddit research. Use opportunity only for startup-style idea hunting.</small>
+            </label>
+            <label class="field">
               <span>Subreddit</span>
               <input id="subreddit" name="subreddit" type="text" placeholder="optional">
             </label>
+          </div>
+
+          <div class="field-grid triple compact-grid">
             <label class="field">
               <span>Report language</span>
               <select id="output-language" name="outputLanguage">

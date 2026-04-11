@@ -27,6 +27,7 @@ form.addEventListener("submit", async (event) => {
   const payload = {
     apiKey: form.apiKey.value.trim(),
     topic: form.topic.value.trim(),
+    reportType: form.reportType.value,
     subreddit: form.subreddit.value.trim(),
     model: form.model.value.trim(),
     outputLanguage: form.outputLanguage.value.trim() || "English",
@@ -74,10 +75,10 @@ form.addEventListener("submit", async (event) => {
       showNotice("Chosen report language needs OpenAI analysis. Local fallback report stayed in English.");
     } else if (result.discoveryMode) {
       showNotice(`Broad search mode used ${result.discoveryQueries.length} sub-queries and merged the most relevant Reddit findings.`);
+    } else if (result.analysisMode === "opportunity") {
+      showNotice("Business opportunity mode is on, so the report was ranked with the investor scoring model.");
     } else if (payload.topUpvotedOnly) {
       showNotice("Summary was built from the highest-upvoted matching Reddit posts.");
-    } else if (result.analysisMode === "opportunity") {
-      showNotice("Business-focused prompt detected, so the report was ranked with the investor scoring model.");
     } else {
       hideNotice();
     }
@@ -220,7 +221,7 @@ function stopProgress() {
 
 function updateProgress() {
   const elapsedSeconds = Math.floor((Date.now() - progressTimerStartedAt) / 1000);
-  const likelyOpportunityMode = isOpportunityPrompt(form.topic.value);
+  const likelyOpportunityMode = form.reportType.value === "opportunity";
   const steps = form.discoveryMode.checked
     ? [
         "Generating broader Reddit sub-queries...",
@@ -248,24 +249,6 @@ function updateProgress() {
   progressStepCount.textContent = `Step ${stepIndex + 1} of ${steps.length}`;
   progressBar.style.width = `${progressPercent}%`;
   progressMessage.textContent = steps[stepIndex];
-}
-
-function isOpportunityPrompt(topic) {
-  const lowered = topic.toLowerCase();
-  const markers = [
-    "monetizable",
-    "profitable",
-    "opportunity",
-    "browser extension ideas",
-    "chrome extension ideas",
-    "small saas ideas",
-    "startup",
-    "business idea",
-    "pricing",
-    "revenue",
-    "mrr",
-  ];
-  return markers.some((marker) => lowered.includes(marker));
 }
 
 function payloadUsesTopPosts() {
