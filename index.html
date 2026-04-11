@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>redditAI</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23c65d2e'/%3E%3Cpath d='M18 24h28v5H18zm0 11h28v5H18zm0 11h18v5H18z' fill='%23fff7ef'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="background-glow glow-left"></div>
+    <div class="background-glow glow-right"></div>
+
+    <main class="page-shell">
+      <section class="hero-card">
+        <p class="eyebrow">REDDITAI</p>
+        <h1>Ask anything. Get a Reddit-backed answer.</h1>
+        <p class="hero-copy">
+          Paste your OpenAI key, enter any question or topic, and this app will search Reddit,
+          pull relevant posts and comments, then turn the findings into a clean report. If your prompt is business-focused, it will automatically switch into opportunity analysis mode.
+        </p>
+      </section>
+
+      <section class="workspace-grid">
+        <form id="research-form" class="panel control-panel">
+          <div class="panel-header">
+            <h2>Research Input</h2>
+            <span class="status-badge" id="run-status">Idle</span>
+          </div>
+
+          <label class="field">
+            <span>OpenAI API key</span>
+            <input id="api-key" name="apiKey" type="password" placeholder="sk-..." autocomplete="off">
+            <small>Can be remembered in this browser with local storage if you want.</small>
+          </label>
+
+          <div class="field-grid">
+            <label class="toggle-field">
+              <input id="remember-key" name="rememberKey" type="checkbox" checked>
+              <span>Remember key on this browser</span>
+            </label>
+            <button class="secondary-button" id="clear-saved-key" type="button">Clear saved key</button>
+          </div>
+
+          <label class="field">
+            <span>What should the agent research?</span>
+            <textarea id="topic" name="topic" rows="4" placeholder="Example: Yezidi history and current issues, why people dislike Notion, ecommerce price monitoring workflow"></textarea>
+          </label>
+
+          <div class="field-grid triple compact-grid">
+            <label class="field">
+              <span>Subreddit</span>
+              <input id="subreddit" name="subreddit" type="text" placeholder="optional">
+            </label>
+            <label class="field">
+              <span>Report language</span>
+              <select id="output-language" name="outputLanguage">
+                <option value="English" selected>English</option>
+                <option value="Russian">Русский</option>
+                <option value="Georgian">ქართული</option>
+                <option value="German">Deutsch</option>
+                <option value="Spanish">Español</option>
+                <option value="French">Français</option>
+                <option value="Turkish">Türkçe</option>
+              </select>
+              <small>OpenAI can write the final report in this language.</small>
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <select id="model" name="model">
+                <option value="gpt-5.4-mini" selected>gpt-5.4-mini</option>
+                <option value="gpt-5.4">gpt-5.4</option>
+                <option value="gpt-5.2">gpt-5.2</option>
+                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+              </select>
+              <small>Pick the OpenAI model used for the final report.</small>
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <label class="toggle-field">
+              <input id="use-ai" name="useAi" type="checkbox" checked>
+              <span>Use OpenAI analysis</span>
+            </label>
+            <label class="toggle-field">
+              <input id="discovery-mode" name="discoveryMode" type="checkbox">
+              <span>Broad Reddit search mode</span>
+            </label>
+          </div>
+
+          <div class="field-grid triple">
+            <label class="field">
+              <span>Posts</span>
+              <input id="limit" name="limit" type="number" min="1" max="12" value="6">
+            </label>
+            <label class="field">
+              <span>Comments per post</span>
+              <input id="commentsPerPost" name="commentsPerPost" type="number" min="0" max="8" value="4">
+            </label>
+            <label class="field">
+              <span>Time window</span>
+              <select id="time" name="time">
+                <option value="hour">Hour</option>
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year" selected>Year</option>
+                <option value="all">All time</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Sort</span>
+              <select id="sort" name="sort">
+                <option value="relevance" selected>Relevance</option>
+                <option value="top">Top</option>
+                <option value="new">New</option>
+                <option value="hot">Hot</option>
+                <option value="comments">Most comments</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="primary-button inline-button" type="submit">Run Research</button>
+          </div>
+        </form>
+
+        <section class="panel output-panel">
+          <div class="panel-header">
+            <h2>Research Report</h2>
+            <div class="output-actions">
+              <span class="meta-text" id="sample-size">No research yet</span>
+              <button class="secondary-button compact" id="copy-report" type="button">Copy report</button>
+            </div>
+          </div>
+
+          <section id="progress-panel" class="progress-panel hidden" aria-live="polite">
+            <div class="progress-header">
+              <strong id="progress-title">Research in progress</strong>
+              <span class="meta-text" id="progress-step-count">Step 1 of 4</span>
+            </div>
+            <div class="progress-bar-track">
+              <div id="progress-bar" class="progress-bar-fill"></div>
+            </div>
+            <p id="progress-message" class="progress-message">Starting research...</p>
+          </section>
+
+          <div id="notice" class="notice hidden"></div>
+          <article id="summary" class="summary-card empty-state">
+            Reddit findings will appear here.
+          </article>
+
+          <section class="sources-block">
+            <div class="panel-header compact">
+              <h3>Sources Reviewed</h3>
+              <span class="meta-text" id="source-count">0 posts</span>
+            </div>
+            <div id="sources" class="sources-list"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
