@@ -10,7 +10,7 @@
   <body>
     <div class="background-glow glow-left"></div>
     <div class="background-glow glow-right"></div>
-    <div class="version-badge" id="app-version">redditAI v0.4.0</div>
+    <div class="version-badge" id="app-version">redditAI v0.5.0</div>
 
     <main class="page-shell">
       <section class="hero-card">
@@ -22,56 +22,51 @@
         </p>
       </section>
 
-      <section class="workspace-grid">
-        <form id="research-form" class="panel control-panel">
-          <div class="panel-header">
-            <h2>Research Input</h2>
+      <section class="workspace-stack">
+        <form id="research-form" class="panel control-panel command-panel">
+          <div class="command-head">
+            <div>
+              <h2>Research Command Center</h2>
+              <p>Set the source, language, and filters once. Then ask Reddit anything.</p>
+            </div>
             <span class="status-badge" id="run-status">Idle</span>
           </div>
 
-          <label class="field">
-            <span>OpenAI API key</span>
-            <input id="api-key" name="apiKey" type="password" placeholder="sk-..." autocomplete="off">
-            <small>Can be remembered in this browser with local storage if you want.</small>
-          </label>
-
-          <div class="field-grid">
-            <label class="toggle-field">
-              <input id="remember-key" name="rememberKey" type="checkbox" checked>
-              <span>Remember key on this browser</span>
+          <div class="api-row">
+            <label class="field api-key-field">
+              <span>OpenAI API key</span>
+              <input id="api-key" name="apiKey" type="password" placeholder="sk-..." autocomplete="off">
             </label>
-            <button class="secondary-button" id="clear-saved-key" type="button">Clear saved key</button>
+            <label class="toggle-pill">
+              <input id="remember-key" name="rememberKey" type="checkbox" checked>
+              <span>Remember key</span>
+            </label>
+            <button class="secondary-button compact-action" id="clear-saved-key" type="button">Clear key</button>
           </div>
 
-          <label class="field">
-            <span>What should the agent research?</span>
-            <textarea id="topic" name="topic" rows="4" placeholder="Example: Yezidi history and current issues, why people dislike Notion, ecommerce price monitoring workflow"></textarea>
-          </label>
+          <div class="query-row">
+            <label class="field query-field">
+              <span>Keywords or question</span>
+              <textarea id="topic" name="topic" rows="3" placeholder="Example: best smartphone 2026, Yezidi history, why people dislike Notion"></textarea>
+            </label>
+            <button class="primary-button run-button" type="submit">Run Research</button>
+          </div>
 
-          <div class="field-grid triple compact-grid">
+          <div class="settings-strip">
             <label class="field">
               <span>Report type</span>
               <select id="report-type" name="reportType">
                 <option value="general" selected>TL;DR summary</option>
                 <option value="opportunity">Business opportunity analysis</option>
               </select>
-              <small>Use summary for normal Reddit research. Use opportunity only for startup-style idea hunting.</small>
             </label>
             <label class="field">
-              <span>Subreddit</span>
-              <input id="subreddit" name="subreddit" type="text" placeholder="optional">
-            </label>
-          </div>
-
-          <div class="field-grid triple compact-grid">
-            <label class="field">
-              <span>Report language</span>
+              <span>Language</span>
               <select id="output-language" name="outputLanguage">
                 <option value="English" selected>English</option>
                 <option value="Russian">Русский</option>
                 <option value="Georgian">ქართული</option>
               </select>
-              <small>OpenAI can write the final report in this language.</small>
             </label>
             <label class="field">
               <span>Model</span>
@@ -81,39 +76,21 @@
                 <option value="gpt-5.2">gpt-5.2</option>
                 <option value="gpt-4.1-mini">gpt-4.1-mini</option>
               </select>
-              <small>Pick the OpenAI model used for the final report.</small>
             </label>
-          </div>
-
-          <div class="field-grid">
-            <label class="toggle-field">
-              <input id="use-ai" name="useAi" type="checkbox" checked>
-              <span>Use OpenAI analysis</span>
-            </label>
-            <label class="toggle-field">
-              <input id="discovery-mode" name="discoveryMode" type="checkbox">
-              <span>Broad Reddit search mode</span>
-            </label>
-          </div>
-
-          <div class="field-grid">
-            <label class="toggle-field">
-              <input id="top-upvoted-only" name="topUpvotedOnly" type="checkbox" checked>
-              <span>Use highest-upvoted posts only</span>
-            </label>
-          </div>
-
-          <div class="field-grid triple">
             <label class="field">
+              <span>Subreddit</span>
+              <input id="subreddit" name="subreddit" type="text" placeholder="optional">
+            </label>
+            <label class="field small-field">
               <span>Posts</span>
               <input id="limit" name="limit" type="number" min="1" max="12" value="6">
             </label>
-            <label class="field">
-              <span>Comments per post</span>
+            <label class="field small-field">
+              <span>Comments</span>
               <input id="commentsPerPost" name="commentsPerPost" type="number" min="0" max="8" value="4">
             </label>
             <label class="field">
-              <span>Time window</span>
+              <span>Time</span>
               <select id="time" name="time">
                 <option value="hour">Hour</option>
                 <option value="day">Day</option>
@@ -123,9 +100,6 @@
                 <option value="all">All time</option>
               </select>
             </label>
-          </div>
-
-          <div class="field-grid">
             <label class="field">
               <span>Sort</span>
               <select id="sort" name="sort">
@@ -138,8 +112,19 @@
             </label>
           </div>
 
-          <div class="form-actions">
-            <button class="primary-button inline-button" type="submit">Run Research</button>
+          <div class="toggle-strip">
+            <label class="toggle-pill">
+              <input id="use-ai" name="useAi" type="checkbox" checked>
+              <span>Use OpenAI analysis</span>
+            </label>
+            <label class="toggle-pill">
+              <input id="top-upvoted-only" name="topUpvotedOnly" type="checkbox" checked>
+              <span>Highest-upvoted posts</span>
+            </label>
+            <label class="toggle-pill">
+              <input id="discovery-mode" name="discoveryMode" type="checkbox">
+              <span>Broad Reddit search</span>
+            </label>
           </div>
         </form>
 
