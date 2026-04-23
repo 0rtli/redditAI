@@ -51,6 +51,23 @@ body {
   background: rgba(222, 170, 89, 0.34);
 }
 
+.version-badge {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 10;
+  padding: 8px 12px;
+  border: 1px solid rgba(139, 52, 22, 0.18);
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: rgba(255, 249, 240, 0.86);
+  box-shadow: 0 10px 30px rgba(68, 41, 16, 0.12);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(14px);
+}
+
 .page-shell {
   position: relative;
   width: min(1180px, calc(100vw - 32px));
@@ -458,5 +475,12 @@ select:focus {
 
   h1 {
     max-width: none;
+  }
+
+  .version-badge {
+    top: 8px;
+    right: 9px;
+    font-size: 0.7rem;
+    padding: 7px 10px;
   }
 }
