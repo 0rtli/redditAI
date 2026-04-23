@@ -101,6 +101,7 @@ STOP_WORDS = {
     "will",
     "with",
     "would",
+    "why",
     "you",
     "your",
 }
@@ -122,6 +123,49 @@ GENERIC_TOPIC_WORDS = {
     "solutions",
     "platform",
     "platforms",
+    "say",
+    "says",
+    "said",
+    "saying",
+    "year",
+    "years",
+    "thing",
+    "things",
+    "reddit",
+    "user",
+    "users",
+    "experience",
+    "experiences",
+    "opinion",
+    "opinions",
+    "review",
+    "reviews",
+    "common",
+    "history",
+    "discussion",
+    "discussions",
+    "thread",
+    "threads",
+    "question",
+    "questions",
+    "challenge",
+    "challenges",
+    "concern",
+    "concerns",
+    "perspective",
+    "perspectives",
+    "controversy",
+    "like",
+    "likes",
+    "dislike",
+    "dislikes",
+}
+KEYWORD_ALIASES = {
+    "smartphone": {"smartphone", "smartphones", "iphone", "android", "samsung", "pixel"},
+    "phone": {"phone", "phones", "smartphone", "smartphones", "mobile", "iphone", "android", "samsung", "pixel"},
+    "laptop": {"laptop", "laptops", "notebook", "macbook", "thinkpad"},
+    "car": {"car", "cars", "vehicle", "vehicles", "auto"},
+    "movie": {"movie", "movies", "film", "films"},
 }
 META_NOISE_MARKERS = (
     "acceptable ways to share",
@@ -535,6 +579,35 @@ def normalize_output_language(value: str | None) -> str:
     return "English"
 
 
+def general_report_sections_for_language(language: str) -> str:
+    if language == "Russian":
+        return (
+            "1. Сводка данных\n"
+            "2. TL;DR\n"
+            "3. Ключевые выводы\n"
+            "4. Топ постов\n"
+            "5. Полезные цитаты\n"
+            "6. Источники"
+        )
+    if language == "Georgian":
+        return (
+            "1. მონაცემების შეჯამება\n"
+            "2. TL;DR\n"
+            "3. მთავარი მიგნებები\n"
+            "4. საუკეთესო პოსტები\n"
+            "5. სასარგებლო ციტატები\n"
+            "6. წყაროების შენიშვნები"
+        )
+    return (
+        "1. Data Summary\n"
+        "2. TL;DR\n"
+        "3. Key Points\n"
+        "4. Top Posts\n"
+        "5. Useful Quotes\n"
+        "6. Source Notes"
+    )
+
+
 def search_reddit(
     topic: str,
     *,
@@ -597,28 +670,23 @@ def rank_posts_for_topic(topic: str, posts: list[RedditPost], limit: int) -> lis
     if not keywords:
         return posts[:limit]
 
+    keyword_groups = build_keyword_groups(keywords)
     scored: list[tuple[int, int, int, RedditPost]] = []
-    min_matches = 2 if len(keywords) >= 3 else 1
+    min_matches = 2 if len(keyword_groups) >= 2 else 1
     for post in posts:
-        title_tokens = {
-            normalize_token(token)
-            for token in re.findall(r"[a-z][a-z0-9'-]{2,}", post.title.lower())
-        }
-        body_tokens = {
-            normalize_token(token)
-            for token in re.findall(r"[a-z][a-z0-9'-]{2,}", post.selftext.lower())
-        }
-        title_matches = sum(1 for keyword in keywords if keyword in title_tokens)
-        body_matches = sum(1 for keyword in keywords if keyword in body_tokens)
+        title_tokens = tokenize_for_matching(post.title)
+        body_tokens = tokenize_for_matching(post.selftext)
+        title_matches = count_keyword_group_matches(title_tokens, keyword_groups)
+        body_matches = count_keyword_group_matches(body_tokens, keyword_groups)
         total_matches = title_matches + body_matches
-        if len(keywords) >= 2 and title_matches == 0:
+        if len(keyword_groups) >= 2 and title_matches == 0:
             continue
         if total_matches < min_matches:
             continue
         scored.append((title_matches, total_matches, post.score, post))
 
     if not scored:
-        return posts[:limit]
+        return []
 
     scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
     return [post for _, _, _, post in scored[:limit]]
@@ -966,19 +1034,17 @@ def rank_discovery_posts(topic: str, posts: list[RedditPost]) -> list[RedditPost
 
 
 def rank_general_posts(topic: str, posts: list[RedditPost]) -> list[RedditPost]:
-    query_tokens = set(extract_topic_keywords(topic))
+    keywords = extract_topic_keywords(topic)
+    keyword_groups = build_keyword_groups(keywords)
+    query_tokens = set(keywords)
     ranked: list[tuple[float, RedditPost]] = []
     for post in posts:
         text = " ".join(
             [post.title, post.selftext] + [comment.body for comment in post.comments]
         ).lower()
         signals = detect_signals(text)
-        tokens = {
-            normalize_token(token)
-            for token in re.findall(r"[a-z][a-z0-9'-]{2,}", text)
-            if token not in STOP_WORDS
-        }
-        overlap = len(tokens & query_tokens)
+        tokens = tokenize_for_matching(text)
+        overlap = count_keyword_group_matches(tokens, keyword_groups)
         score = (
             len(post.matched_queries) * 2.2
             + min(post.score, 150) / 20
@@ -990,7 +1056,8 @@ def rank_general_posts(topic: str, posts: list[RedditPost]) -> list[RedditPost]:
             + signals["workaround"] * 0.4
             - signals["weak"] * 0.6
         )
-        if overlap == 0 and len(post.matched_queries) <= 1 and post.score < 3:
+        min_overlap = 2 if len(keyword_groups) >= 2 else 1
+        if query_tokens and overlap < min_overlap:
             continue
         ranked.append((score, post))
 
@@ -1094,13 +1161,35 @@ def clean_text(value: str) -> str:
 
 def extract_topic_keywords(topic: str) -> list[str]:
     keywords = []
-    for token in re.findall(r"[a-z][a-z0-9'-]{2,}", topic.lower()):
+    for token in re.findall(r"[a-z0-9][a-z0-9'-]{1,}", topic.lower()):
         if token in STOP_WORDS or token in GENERIC_TOPIC_WORDS:
+            continue
+        if token.isdigit() and len(token) < 4:
             continue
         normalized = normalize_token(token)
         if normalized:
             keywords.append(normalized)
     return list(dict.fromkeys(keywords))
+
+
+def tokenize_for_matching(text: str) -> set[str]:
+    return {
+        normalize_token(token)
+        for token in re.findall(r"[a-z0-9][a-z0-9'-]{1,}", text.lower())
+        if token not in STOP_WORDS and token not in GENERIC_TOPIC_WORDS
+    }
+
+
+def build_keyword_groups(keywords: list[str]) -> list[set[str]]:
+    groups: list[set[str]] = []
+    for keyword in keywords:
+        aliases = KEYWORD_ALIASES.get(keyword, {keyword})
+        groups.append({normalize_token(alias) for alias in aliases if normalize_token(alias)})
+    return groups
+
+
+def count_keyword_group_matches(tokens: set[str], keyword_groups: list[set[str]]) -> int:
+    return sum(1 for group in keyword_groups if tokens & group)
 
 
 def normalize_token(token: str) -> str:
@@ -1360,6 +1449,7 @@ def summarize_with_openai(
     analysis = analyze_market_opportunities(topic, posts, research_context) if analysis_mode == "opportunity" else None
     target_language = normalize_output_language(output_language)
     if analysis_mode == "general":
+        general_sections = general_report_sections_for_language(target_language)
         instructions = (
             f"CRITICAL REQUIREMENT: Write the entire final report in {target_language}. "
             f"All section headers, bullets, explanations, and summaries must be in {target_language}. "
@@ -1369,13 +1459,8 @@ def summarize_with_openai(
             "The data collection phase has already been completed for you. Never say the evidence is missing unless the data summary explicitly shows that all collection attempts failed. "
             "Keep product names, subreddit names, URLs, and technical terms unchanged when needed. "
             "Be direct, readable, and specific about what Reddit users are actually saying. Default to a concise TL;DR style instead of a long report.\n\n"
-            "Return markdown with these sections exactly:\n"
-            "1. Data Summary\n"
-            "2. TL;DR\n"
-            "3. Key Points\n"
-            "4. Top Posts\n"
-            "5. Useful Quotes\n"
-            "6. Source Notes\n"
+            "Return markdown with these section headers exactly:\n"
+            f"{general_sections}\n"
         )
     else:
         instructions = (
