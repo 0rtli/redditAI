@@ -72,7 +72,7 @@ body {
   position: relative;
   width: min(1320px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 40px 0 56px;
+  padding: 22px 0 44px;
 }
 
 .hero-card,
@@ -85,20 +85,20 @@ body {
 
 .hero-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.64fr);
-  gap: 22px;
-  align-items: end;
-  padding: 26px 30px;
-  border-radius: calc(var(--radius) + 8px);
-  margin-bottom: 18px;
+  grid-template-columns: auto minmax(260px, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 22px;
+  margin-bottom: 12px;
 }
 
 .eyebrow {
-  margin: 0 0 12px;
+  margin: 0 0 3px;
   color: var(--accent-dark);
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
 }
 
 h1,
@@ -109,18 +109,18 @@ h3 {
 }
 
 h1 {
-  max-width: 20ch;
-  font-size: clamp(1.75rem, 2.7vw, 3.25rem);
-  line-height: 1.02;
-  letter-spacing: -0.03em;
+  max-width: none;
+  font-size: clamp(1.15rem, 1.7vw, 1.55rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
 }
 
 .hero-copy {
-  max-width: 38rem;
+  max-width: none;
   margin: 0;
   color: var(--muted);
-  font-size: 0.96rem;
-  line-height: 1.6;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .workspace-stack {

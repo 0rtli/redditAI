@@ -10,16 +10,15 @@
   <body>
     <div class="background-glow glow-left"></div>
     <div class="background-glow glow-right"></div>
-    <div class="version-badge" id="app-version">redditAI v0.5.0</div>
+    <div class="version-badge" id="app-version">redditAI v0.5.1</div>
 
     <main class="page-shell">
       <section class="hero-card">
-        <p class="eyebrow">REDDITAI</p>
-        <h1>Ask anything. Get a Reddit-backed answer.</h1>
-        <p class="hero-copy">
-          Paste your OpenAI key, enter keywords or a question, and redditAI will search Reddit,
-          pull the most relevant posts and comments, then give you a short TL;DR summary. If your prompt is business-focused, it can still switch into opportunity analysis mode.
-        </p>
+        <div>
+          <p class="eyebrow">REDDITAI</p>
+          <h1>Reddit TL;DR research</h1>
+        </div>
+        <p class="hero-copy">Search Reddit by keywords, pull the strongest posts, and get a short summary.</p>
       </section>
 
       <section class="workspace-stack">
@@ -34,7 +33,7 @@
 
           <div class="api-row">
             <label class="field api-key-field">
-              <span>OpenAI API key</span>
+              <span>API key</span>
               <input id="api-key" name="apiKey" type="password" placeholder="sk-..." autocomplete="off">
             </label>
             <label class="toggle-pill">
@@ -47,7 +46,7 @@
           <div class="query-row">
             <label class="field query-field">
               <span>Keywords or question</span>
-              <textarea id="topic" name="topic" rows="3" placeholder="Example: best smartphone 2026, Yezidi history, why people dislike Notion"></textarea>
+              <textarea id="topic" name="topic" rows="3" placeholder="Example: best smartphone 2026, why people dislike Notion, budget travel tips"></textarea>
             </label>
             <button class="primary-button run-button" type="submit">Run Research</button>
           </div>
