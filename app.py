@@ -19,6 +19,7 @@ from reddit_research_agent import (
 ROOT = Path(__file__).parent
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("PORT", "8000"))
+APP_VERSION = "0.5.3"
 
 
 def read_text_file(name: str) -> bytes:
@@ -110,6 +111,7 @@ class ResearchHandler(BaseHTTPRequestHandler):
             self._send_json(
                 {
                     "topic": topic,
+                    "appVersion": APP_VERSION,
                     "summary": summary,
                     "aiNotice": ai_notice,
                     "sampleSize": len(posts),
@@ -157,7 +159,7 @@ def _enum_value(value: Any, allowed: set[str], default: str) -> str:
 
 def main() -> None:
     server = ThreadingHTTPServer((HOST, PORT), ResearchHandler)
-    print(f"redditAI running at http://{HOST}:{PORT}")
+    print(f"redditAI v{APP_VERSION} running at http://{HOST}:{PORT}")
     server.serve_forever()
 
 

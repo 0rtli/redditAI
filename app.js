@@ -15,6 +15,7 @@ const progressStepCount = document.getElementById("progress-step-count");
 const progressBar = document.getElementById("progress-bar");
 const progressMessage = document.getElementById("progress-message");
 const OPENAI_KEY_STORAGE_KEY = "redditOpportunityAgent.openaiKey";
+const EXPECTED_APP_VERSION = "0.5.3";
 let progressInterval = null;
 let progressTimerStartedAt = null;
 let latestReportText = "";
@@ -69,7 +70,11 @@ form.addEventListener("submit", async (event) => {
     renderSources(result.posts || []);
     sampleSize.textContent = `${result.sampleSize} posts reviewed`;
 
-    if (result.aiNotice) {
+    if (!result.appVersion) {
+      showNotice("Backend is older than the UI. Restart python3 app.py before trusting the result.");
+    } else if (result.appVersion !== EXPECTED_APP_VERSION) {
+      showNotice(`Version mismatch: UI v${EXPECTED_APP_VERSION}, backend v${result.appVersion}. Restart python3 app.py.`);
+    } else if (result.aiNotice) {
       showNotice(`AI summary unavailable, fallback used instead: ${result.aiNotice}`);
     } else if (!payload.useAi && payload.outputLanguage.toLowerCase() !== "english") {
       showNotice("Chosen report language needs OpenAI analysis. Local fallback report stayed in English.");

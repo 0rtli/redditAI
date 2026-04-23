@@ -167,6 +167,22 @@ KEYWORD_ALIASES = {
     "car": {"car", "cars", "vehicle", "vehicles", "auto"},
     "movie": {"movie", "movies", "film", "films"},
 }
+RANKING_INTENT_ALIASES = {
+    "best",
+    "top",
+    "recommend",
+    "recommended",
+    "recommendation",
+    "recommendations",
+    "favorite",
+    "favourite",
+    "worth",
+    "buy",
+    "choose",
+    "choice",
+    "rank",
+    "ranking",
+}
 META_NOISE_MARKERS = (
     "acceptable ways to share",
     "not allowed",
@@ -619,17 +635,18 @@ def search_reddit(
     top_upvoted_only: bool = False,
 ) -> list[RedditPost]:
     query = quote_plus(topic)
-    fetch_limit = min(max(limit * 5, limit), 25)
+    effective_time_filter = choose_time_filter_for_topic(topic, time_filter)
+    fetch_limit = min(max(limit * 8, limit), 50)
     effective_sort = "top" if top_upvoted_only else sort
     if subreddit:
         url = (
             f"{REDDIT_BASE_URL}/r/{subreddit}/search.json?q={query}"
-            f"&restrict_sr=1&sort={effective_sort}&t={time_filter}&limit={fetch_limit}&raw_json=1"
+            f"&restrict_sr=1&sort={effective_sort}&t={effective_time_filter}&limit={fetch_limit}&raw_json=1"
         )
     else:
         url = (
             f"{REDDIT_BASE_URL}/search.json?q={query}"
-            f"&sort={effective_sort}&t={time_filter}&limit={fetch_limit}&raw_json=1"
+            f"&sort={effective_sort}&t={effective_time_filter}&limit={fetch_limit}&raw_json=1"
         )
 
     payload = fetch_json(url)
@@ -653,10 +670,6 @@ def search_reddit(
             )
         )
 
-    if top_upvoted_only:
-        candidates.sort(key=lambda post: (post.score, post.num_comments), reverse=True)
-        candidates = candidates[: max(limit * 3, limit)]
-
     posts = rank_posts_for_topic(topic, candidates, limit)
     for post in posts:
         if post.permalink and comments_per_post > 0:
@@ -665,13 +678,27 @@ def search_reddit(
     return posts
 
 
+def choose_time_filter_for_topic(topic: str, time_filter: str) -> str:
+    if time_filter == "all":
+        return time_filter
+    current_year = time.gmtime().tm_year
+    years = [
+        int(match)
+        for match in re.findall(r"\b(19\d{2}|20\d{2})\b", topic)
+    ]
+    if any(year < current_year for year in years):
+        return "all"
+    return time_filter
+
+
 def rank_posts_for_topic(topic: str, posts: list[RedditPost], limit: int) -> list[RedditPost]:
     keywords = extract_topic_keywords(topic)
     if not keywords:
         return posts[:limit]
 
     keyword_groups = build_keyword_groups(keywords)
-    scored: list[tuple[int, int, int, RedditPost]] = []
+    intent_keywords = extract_ranking_intent_keywords(topic)
+    scored: list[tuple[int, int, int, int, RedditPost]] = []
     min_matches = 2 if len(keyword_groups) >= 2 else 1
     for post in posts:
         title_tokens = tokenize_for_matching(post.title)
@@ -679,17 +706,18 @@ def rank_posts_for_topic(topic: str, posts: list[RedditPost], limit: int) -> lis
         title_matches = count_keyword_group_matches(title_tokens, keyword_groups)
         body_matches = count_keyword_group_matches(body_tokens, keyword_groups)
         total_matches = title_matches + body_matches
+        intent_matches = count_intent_matches(title_tokens | body_tokens, intent_keywords)
         if len(keyword_groups) >= 2 and title_matches == 0:
             continue
         if total_matches < min_matches:
             continue
-        scored.append((title_matches, total_matches, post.score, post))
+        scored.append((intent_matches, title_matches, total_matches, post.score, post))
 
     if not scored:
         return []
 
     scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
-    return [post for _, _, _, post in scored[:limit]]
+    return [post for _, _, _, _, post in scored[:limit]]
 
 
 def should_use_discovery_mode(topic: str) -> bool:
@@ -944,6 +972,8 @@ def collect_research_posts(
 
     ranker = rank_discovery_posts if opportunity_mode else rank_general_posts
     posts = ranker(topic, list(deduped.values()))
+    if not opportunity_mode:
+        posts = filter_posts_for_topic_relevance(topic, posts)
 
     quote_snippets = collect_quote_snippets(topic, posts, target=18)
     if len(posts) < max(4, limit) or len(quote_snippets) < 10:
@@ -973,6 +1003,8 @@ def collect_research_posts(
                         existing.matched_queries.append(matched_query)
                 merge_comments(existing, post)
         posts = ranker(topic, list(deduped.values()))
+        if not opportunity_mode:
+            posts = filter_posts_for_topic_relevance(topic, posts)
         quote_snippets = collect_quote_snippets(topic, posts, target=18)
 
     capped_posts = posts[: min(max(limit * 3, 10), 24)]
@@ -1063,6 +1095,61 @@ def rank_general_posts(topic: str, posts: list[RedditPost]) -> list[RedditPost]:
 
     ranked.sort(key=lambda item: item[0], reverse=True)
     return [post for _, post in ranked]
+
+
+def filter_posts_for_topic_relevance(topic: str, posts: list[RedditPost]) -> list[RedditPost]:
+    keywords = extract_topic_keywords(topic)
+    if not keywords:
+        return posts
+    keyword_groups = build_keyword_groups(keywords)
+    intent_keywords = extract_ranking_intent_keywords(topic)
+    return [
+        post
+        for post in posts
+        if post_matches_topic_groups(post, keyword_groups)
+        and post_matches_ranking_intent(post, intent_keywords)
+    ]
+
+
+def post_matches_topic_groups(post: RedditPost, keyword_groups: list[set[str]]) -> bool:
+    title_tokens = tokenize_for_matching(post.title)
+    body_tokens = tokenize_for_matching(post.selftext)
+    comment_tokens = set()
+    for comment in post.comments[:3]:
+        comment_tokens.update(tokenize_for_matching(comment.body))
+
+    title_matches = count_keyword_group_matches(title_tokens, keyword_groups)
+    total_matches = count_keyword_group_matches(
+        title_tokens | body_tokens | comment_tokens,
+        keyword_groups,
+    )
+    if len(keyword_groups) >= 2:
+        return title_matches >= 1 and total_matches >= 2
+    return title_matches >= 1 or total_matches >= 1
+
+
+def extract_ranking_intent_keywords(topic: str) -> set[str]:
+    tokens = {
+        normalize_token(token)
+        for token in re.findall(r"[a-z0-9][a-z0-9'-]{1,}", topic.lower())
+        if token not in STOP_WORDS
+    }
+    return tokens & RANKING_INTENT_ALIASES
+
+
+def count_intent_matches(tokens: set[str], intent_keywords: set[str]) -> int:
+    if not intent_keywords:
+        return 0
+    return len(tokens & intent_keywords)
+
+
+def post_matches_ranking_intent(post: RedditPost, intent_keywords: set[str]) -> bool:
+    if not intent_keywords:
+        return True
+    tokens = tokenize_for_matching(post.title) | tokenize_for_matching(post.selftext)
+    for comment in post.comments[:3]:
+        tokens.update(tokenize_for_matching(comment.body))
+    return bool(tokens & intent_keywords)
 
 
 def collect_quote_snippets(topic: str, posts: list[RedditPost], target: int = 18) -> list[str]:
