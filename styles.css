@@ -221,10 +221,11 @@ textarea,
 select {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.72);
-  padding: 12px 14px;
+  padding: 10px 12px;
   color: var(--text);
+  font-size: 0.9rem;
   transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
@@ -249,13 +250,14 @@ select:focus {
 
 .api-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto auto;
-  gap: 12px;
+  grid-template-columns: minmax(220px, 320px) auto auto 1fr;
+  gap: 10px;
   align-items: end;
 }
 
 .api-key-field {
   min-width: 0;
+  max-width: 320px;
 }
 
 .query-row {
@@ -272,26 +274,29 @@ select:focus {
 .settings-strip {
   display: grid;
   grid-template-columns:
-    minmax(160px, 1.1fr)
-    minmax(120px, 0.8fr)
-    minmax(140px, 0.9fr)
-    minmax(130px, 0.8fr)
+    minmax(140px, 1fr)
+    minmax(108px, 0.72fr)
+    minmax(120px, 0.78fr)
+    minmax(112px, 0.72fr)
+    minmax(64px, 0.38fr)
     minmax(78px, 0.45fr)
-    minmax(94px, 0.55fr)
-    minmax(98px, 0.65fr)
-    minmax(110px, 0.7fr);
-  gap: 12px;
+    minmax(86px, 0.55fr)
+    minmax(96px, 0.6fr);
+  gap: 9px;
   align-items: end;
-  padding: 14px;
+  padding: 10px;
   border: 1px solid rgba(27, 24, 21, 0.08);
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.42);
 }
 
 .settings-strip .field span,
 .api-row .field span,
 .query-row .field span {
-  font-size: 0.84rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .settings-strip .field small {
@@ -334,10 +339,10 @@ select:focus {
 .toggle-pill {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  min-height: 46px;
+  gap: 7px;
+  min-height: 38px;
   margin: 0;
-  padding: 11px 14px;
+  padding: 8px 11px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--text);
@@ -353,7 +358,7 @@ select:focus {
 
 .toggle-pill span {
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
@@ -401,11 +406,12 @@ select:focus {
 
 .secondary-button {
   align-self: end;
-  min-height: 46px;
+  min-height: 38px;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 12px 16px;
+  border-radius: 14px;
+  padding: 9px 12px;
   color: var(--text);
+  font-size: 0.82rem;
   background: rgba(255, 255, 255, 0.62);
   cursor: pointer;
   transition: transform 160ms ease, background 160ms ease;
